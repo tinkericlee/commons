@@ -1,0 +1,18 @@
+# Mac
+.DS_STORE
+
+# Maven
+target/
+pom.xml.versionsBackup
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+
+# IntelliJ IDEA
+.idea
+*.iml
+
+## Plugin-specific files:
+
+# IntelliJ
+/out/

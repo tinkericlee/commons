@@ -16,3 +16,7 @@ buildNumber.properties
 
 # IntelliJ
 /out/
+
+# build related output
+tools/google-java-format.jar
+*.xmllint

@@ -21,9 +21,7 @@ public abstract class MailBox {
 
   Logger LOG = LoggerFactory.getLogger(this.getClass());
 
-  /**
-   * Key: mailType
-   */
+  /** Key: mailType */
   protected Map<String, MailConsumer> mailConsumers;
 
   protected Queue<MailMessage> mailMessages;
@@ -97,6 +95,5 @@ public abstract class MailBox {
         }
       }
     }
-
   }
 }

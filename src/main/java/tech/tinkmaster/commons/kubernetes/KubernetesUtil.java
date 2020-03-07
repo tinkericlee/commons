@@ -8,15 +8,12 @@ import io.kubernetes.client.custom.Quantity;
 import io.kubernetes.client.models.V1Node;
 import io.kubernetes.client.models.V1NodeList;
 import io.kubernetes.client.models.V1PodList;
-import io.kubernetes.client.util.ClientBuilder;
-import org.apache.commons.lang3.StringUtils;
-
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.StringUtils;
 
 public class KubernetesUtil {
   private static final String POD_SPEC_FIELD_NODE_NAME = "spec.nodeName";
@@ -24,53 +21,71 @@ public class KubernetesUtil {
 
   private static final String POD_STATUS_CONDITION_TYPE_READY = "Ready";
 
-  public static Map<String, Map<String, Quantity>> calculateClusterRemainResource(ApiClient apiClient) throws
-      ApiException {
+  public static Map<String, Map<String, Quantity>> calculateClusterRemainResource(
+      ApiClient apiClient) throws ApiException {
     V1NodeList nodeList = listAllNodes(apiClient);
-    Map<String, Map<String, Quantity>> quantities = nodeList.getItems().stream().filter(
-        KubernetesUtil::isNodeReady).collect(Collectors.toMap(
-        node -> node.getMetadata().getName(),
-        node -> node.getStatus().getAllocatable()));
+    Map<String, Map<String, Quantity>> quantities =
+        nodeList
+            .getItems()
+            .stream()
+            .filter(KubernetesUtil::isNodeReady)
+            .collect(
+                Collectors.toMap(
+                    node -> node.getMetadata().getName(),
+                    node -> node.getStatus().getAllocatable()));
     Map<String, Map<String, Quantity>> remainResources = new HashMap<>();
 
-    quantities.forEach((s, stringQuantityMap) -> {
-      try {
-        AtomicReference<Double> containerCpu = new AtomicReference<>(ResourceUtil.extractCpu(
-            stringQuantityMap));
-        AtomicReference<Double> containerMemory = new AtomicReference<>(ResourceUtil.extractMemory(
-            stringQuantityMap));
+    quantities.forEach(
+        (s, stringQuantityMap) -> {
+          try {
+            AtomicReference<Double> containerCpu =
+                new AtomicReference<>(ResourceUtil.extractCpu(stringQuantityMap));
+            AtomicReference<Double> containerMemory =
+                new AtomicReference<>(ResourceUtil.extractMemory(stringQuantityMap));
 
-        V1PodList podList = listPodOnThisNode(apiClient, s, "Running");
-        podList.getItems().forEach(pod -> {
-          pod.getSpec().getContainers().forEach(container -> {
-            Map<String, Quantity> resource = container.getResources().getRequests();
-            if (resource != null) {
-              if (resource.containsKey(ResourceUtil.RESOURCE_KEY_CPU)) {
-                containerCpu.updateAndGet(v -> v - ResourceUtil.extractCpu(resource));
-              }
-              if (resource.containsKey(ResourceUtil.RESOURCE_KEY_MEMORY)) {
-                containerMemory.updateAndGet(v -> v - ResourceUtil.extractMemory(resource));
-              }
-            }
-          });
+            V1PodList podList = listPodOnThisNode(apiClient, s, "Running");
+            podList
+                .getItems()
+                .forEach(
+                    pod -> {
+                      pod.getSpec()
+                          .getContainers()
+                          .forEach(
+                              container -> {
+                                Map<String, Quantity> resource =
+                                    container.getResources().getRequests();
+                                if (resource != null) {
+                                  if (resource.containsKey(ResourceUtil.RESOURCE_KEY_CPU)) {
+                                    containerCpu.updateAndGet(
+                                        v -> v - ResourceUtil.extractCpu(resource));
+                                  }
+                                  if (resource.containsKey(ResourceUtil.RESOURCE_KEY_MEMORY)) {
+                                    containerMemory.updateAndGet(
+                                        v -> v - ResourceUtil.extractMemory(resource));
+                                  }
+                                }
+                              });
+                    });
+
+            remainResources.put(
+                s, ResourceUtil.buildResource(containerCpu.get(), containerMemory.get()));
+          } catch (ApiException e) {
+            throw new IllegalStateException(e);
+          }
         });
-
-        remainResources.put(
-            s,
-            ResourceUtil.buildResource(containerCpu.get(), containerMemory.get()));
-      } catch (ApiException e) {
-        throw new IllegalStateException(e);
-      }
-    });
-    System.out.println(remainResources);
     return remainResources;
   }
 
-  public static Map<String, Quantity> getClusterAllocatableResource(ApiClient apiClient) throws
-      ApiException {
+  public static Map<String, Quantity> getClusterAllocatableResource(ApiClient apiClient)
+      throws ApiException {
     V1NodeList nodeList = listAllNodes(apiClient);
-    List<Map<String, Quantity>> quantities = nodeList.getItems().stream().filter(KubernetesUtil::isNodeReady).map(
-        node -> node.getStatus().getAllocatable()).collect(Collectors.toList());
+    List<Map<String, Quantity>> quantities =
+        nodeList
+            .getItems()
+            .stream()
+            .filter(KubernetesUtil::isNodeReady)
+            .map(node -> node.getStatus().getAllocatable())
+            .collect(Collectors.toList());
 
     double cpu = 0;
     double memory = 0;
@@ -87,9 +102,7 @@ public class KubernetesUtil {
   }
 
   public static V1PodList listPodOnThisNode(
-      ApiClient apiClient,
-      String nodeName,
-      String statusPhase) throws ApiException {
+      ApiClient apiClient, String nodeName, String statusPhase) throws ApiException {
     CoreV1Api coreV1Api = new CoreV1Api(apiClient);
     ImmutableMap.Builder<String, String> fieldSelector = ImmutableMap.builder();
     fieldSelector.put(POD_SPEC_FIELD_NODE_NAME, nodeName);
@@ -97,16 +110,8 @@ public class KubernetesUtil {
       fieldSelector.put(POD_STATUS_FIELD_PHASE, statusPhase);
     }
     return coreV1Api.listPodForAllNamespaces(
-        null,
-        buildSelector(fieldSelector.build()),
-        null,
-        null,
-        null,
-        null,
-        null,
-        null);
+        null, buildSelector(fieldSelector.build()), null, null, null, null, null, null);
   }
-
 
   public static V1NodeList listAllNodes(ApiClient apiClient) throws ApiException {
     CoreV1Api coreV1Api = new CoreV1Api(apiClient);
@@ -114,9 +119,13 @@ public class KubernetesUtil {
   }
 
   private static boolean isNodeReady(V1Node node) {
-    return node.getStatus().getConditions().stream()
-        .anyMatch(condition -> POD_STATUS_CONDITION_TYPE_READY.equals(condition.getType())
-            && Boolean.parseBoolean(condition.getStatus()));
+    return node.getStatus()
+        .getConditions()
+        .stream()
+        .anyMatch(
+            condition ->
+                POD_STATUS_CONDITION_TYPE_READY.equals(condition.getType())
+                    && Boolean.parseBoolean(condition.getStatus()));
   }
 
   private static String buildSelector(Map<String, String> fieldsMap) {
@@ -124,16 +133,13 @@ public class KubernetesUtil {
       return "";
     }
     StringBuilder sb = new StringBuilder("");
-    fieldsMap.forEach((s1, s2) -> {
-      sb.append(s1);
-      sb.append("=");
-      sb.append(s2);
-      sb.append(",");
-    });
+    fieldsMap.forEach(
+        (s1, s2) -> {
+          sb.append(s1);
+          sb.append("=");
+          sb.append(s2);
+          sb.append(",");
+        });
     return sb.deleteCharAt(sb.lastIndexOf(",")).toString();
-  }
-
-  public static void main(String[] args) throws IOException, ApiException {
-    KubernetesUtil.calculateClusterRemainResource(ClientBuilder.defaultClient());
   }
 }

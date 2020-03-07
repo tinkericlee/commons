@@ -1,20 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
-
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-
   <groupId>tech.tinkmaster</groupId>
   <artifactId>commons</artifactId>
   <version>1.0-SNAPSHOT</version>
-
   <name>commons</name>
-
   <properties>
     <kubernetes.client.version>6.0.1</kubernetes.client.version>
     <junit.version>4.11</junit.version>
   </properties>
-
   <dependencies>
     <dependency>
       <groupId>io.kubernetes</groupId>
@@ -28,4 +22,30 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
+  <build>
+    <plugins>
+      <plugin>
+        <artifactId>maven-deploy-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>deploy</id>
+            <phase>deploy</phase>
+            <goals>
+              <goal>deploy</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+  <distributionManagement>
+    <repository>
+      <id>releases</id>
+      <url>http://nexus.tinkmaster.tech:12229/repository/maven-releases/</url>
+    </repository>
+    <snapshotRepository>
+      <id>snapshots</id>
+      <url>http://nexus.tinkmaster.tech:12229/repository/maven-snapshots/</url>
+    </snapshotRepository>
+  </distributionManagement>
 </project>

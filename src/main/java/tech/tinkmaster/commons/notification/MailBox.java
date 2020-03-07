@@ -56,13 +56,13 @@ public abstract class MailBox {
    * This class is used for loading unconsumed messages from other data storage. You should append
    * the messages into {@link MailBox#mailMessages} object.
    */
-  abstract void loadUnconsumedMessages();
+  public abstract void loadUnconsumedMessages();
 
   /**
    * This class is used for saving unconsumed messages from other data storage. Before terminating
    * the jvm, we should store these messages rather than losing them.
    */
-  abstract void saveUnconsumedMessages();
+  public abstract void saveUnconsumedMessages();
 
   private static class MailBoxNotifier extends Thread {
 

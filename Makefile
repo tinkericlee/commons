@@ -23,22 +23,24 @@ google-java-format: tools/google-java-format.jar
 	  --set-exit-if-changed \
 	  $(shell find . -name \*.java)
 
+tools/google-java-format.jar:
+	mkdir -p tools && \
+	wget \
+	  https://github.com/google/google-java-format/releases/download/google-java-format-$(GOOGLE_JAVA_FORMAT)/google-java-format-$(GOOGLE_JAVA_FORMAT)-all-deps.jar \
+	  -O tools/google-java-format.jar
+
 # use $$ to escape $ in Makefile
 .PHONY: xml-format
 xml-format:
 	notPretty=0; \
 	for f in *.xml; do \
 	xmllint -o $$f.xmllint --format $$f; \
-	if [ $$(base64 -i $$f) == $$(base64 -i $$f.xmllint) ]; then \
+	origin_file=$$(echo -n $$(base64 -i $$f)); \
+	linted_file=$$(echo -n $$(base64 -i $$f.xmllint)); \
+	if [ "$$origin_file" = "$$linted_file" ]; then \
 	  mv $$f.xmllint $$f && rm -f $$f.xmllint; \
 	else \
 	  mv $$f.xmllint $$f && rm -f $$f.xmllint && notPretty=1; \
 	fi \
 	done; \
 	exit $$notPretty;
-
-tools/google-java-format.jar:
-    mkdir -p tools && \
-	wget \
-	  https://github.com/google/google-java-format/releases/download/google-java-format-$(GOOGLE_JAVA_FORMAT)/google-java-format-$(GOOGLE_JAVA_FORMAT)-all-deps.jar \
-	  -O tools/google-java-format.jar

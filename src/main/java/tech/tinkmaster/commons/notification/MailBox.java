@@ -19,11 +19,14 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class MailBox {
 
-  /** Key: mailType */
+  Logger LOG = LoggerFactory.getLogger(this.getClass());
+
+  /**
+   * Key: mailType
+   */
   protected Map<String, MailConsumer> mailConsumers;
 
   protected Queue<MailMessage> mailMessages;
-  Logger LOG = LoggerFactory.getLogger(this.getClass());
   private MailBoxNotifier notifyThread;
 
   private ExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
@@ -90,5 +93,6 @@ public abstract class MailBox {
         }
       }
     }
+
   }
 }

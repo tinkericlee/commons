@@ -18,62 +18,79 @@ import org.slf4j.LoggerFactory;
  * to make sure we can dispose the unconsumed messages rather than just discard them.
  */
 public abstract class MailBox {
-  Logger LOG = LoggerFactory.getLogger(this.getClass());
 
-  /** Key: mailType */
-  protected Map<String, MailConsumer> mailConsumers;
+	/**
+	 * Key: mailType
+	 */
+	protected Map<String, MailConsumer> mailConsumers;
+	protected Queue<MailMessage> mailMessages;
+	Logger LOG = LoggerFactory.getLogger(this.getClass());
+	private MailBoxNotifier notifyThread;
 
-  protected Queue<MailMessage> mailMessages;
+	private ExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
 
-  private Runnable notifyThread = new Thread();
+	public MailBox() {
+		loadUnconsumedMessages();
+		Runtime.getRuntime()
+				.addShutdownHook(
+						new Thread(
+								() -> {
+									LOG.info("Detect termination message.");
+									saveUnconsumedMessages();
+								}));
+		mailConsumers = new HashMap<>();
+		mailMessages = new ConcurrentLinkedDeque<>();
+		notifyThread = new MailBoxNotifier(mailConsumers, mailMessages);
+		executorService.submit(notifyThread);
 
-  private ExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
+	}
 
-  public MailBox() {
-    loadUnconsumedMessages();
-    Runtime.getRuntime()
-        .addShutdownHook(
-            new Thread(
-                () -> {
-                  LOG.info("Detect termination message.");
-                  saveUnconsumedMessages();
-                }));
-    executorService.submit(notifyThread);
-    mailConsumers = new HashMap<>();
-    mailMessages = new ConcurrentLinkedDeque<>();
-  }
+	public void putMailMessage(MailMessage mailMessage) {
+		mailMessages.offer(mailMessage);
+	}
 
-  public void putMailMessage(MailMessage mailMessage) {
-    mailMessages.offer(mailMessage);
-  }
+	public void register(MailConsumer consumer) {
+		mailConsumers.put(consumer.getMailType(), consumer);
+	}
 
-  public void register(MailConsumer consumer) {
-    mailConsumers.put(consumer.getMailType(), consumer);
-  }
+	/**
+	 * This class is used for loading unconsumed messages from other data storage. You should append
+	 * the messages into {@link MailBox#mailMessages} object.
+	 */
+	abstract void loadUnconsumedMessages();
 
-  /**
-   * This class is used for loading unconsumed messages from other data storage. You should append
-   * the messages into {@link MailBox#mailMessages} object.
-   */
-  abstract void loadUnconsumedMessages();
+	/**
+	 * This class is used for saving unconsumed messages from other data storage. Before terminating
+	 * the jvm, we should store these messages rather than losing them.
+	 */
+	abstract void saveUnconsumedMessages();
 
-  /**
-   * This class is used for saving unconsumed messages from other data storage. Before terminating
-   * the jvm, we should store these messages rather than losing them.
-   */
-  abstract void saveUnconsumedMessages();
+	private static class MailBoxNotifier extends Thread {
 
-  private static class MailBoxNotifier extends Thread {
-    protected Map<String, MailConsumer> mailConsumers;
+		private static final Logger LOG = LoggerFactory.getLogger(MailBoxNotifier.class);
 
-    protected Queue<MailMessage> mailMessages;
+		protected Map<String, MailConsumer> mailConsumers;
 
-    MailBoxNotifier(Map<String, MailConsumer> mailConsumers, Queue<MailMessage> mailMessages) {
-      requireNonNull(mailConsumers, "mailConsumers");
-      requireNonNull(mailMessages, "mailMessages");
-    }
+		protected Queue<MailMessage> mailMessages;
 
-    @Override
-    public void run() {}
-  }
+		MailBoxNotifier(Map<String, MailConsumer> mailConsumers, Queue<MailMessage> mailMessages) {
+			requireNonNull(mailConsumers, "mailConsumers");
+			requireNonNull(mailMessages, "mailMessages");
+		}
+
+		@Override
+		public void run() {
+			while (true) {
+				MailMessage mailMessage = mailMessages.poll();
+				MailConsumer consumer = mailConsumers.get(mailMessage.mailTye);
+				if (consumer != null) {
+					try {
+						consumer.receiveMessage(mailMessage);
+					} catch (Exception e) {
+						LOG.error("Consume message error!", e);
+					}
+				}
+			}
+		}
+	}
 }

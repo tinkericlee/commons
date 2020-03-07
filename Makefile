@@ -35,7 +35,9 @@ xml-format:
 	notPretty=0; \
 	for f in *.xml; do \
 	xmllint -o $$f.xmllint --format $$f; \
-	if [ $$(base64 -i $$f) == $$(base64 -i $$f.xmllint) ]; then \
+	origin_file=$$(echo -n $$(base64 -i $$f)); \
+	linted_file=$$(echo -n $$(base64 -i $$f.xmllint)); \
+	if [ "$$origin_file" = "$$linted_file" ]; then \
 	  mv $$f.xmllint $$f && rm -f $$f.xmllint; \
 	else \
 	  mv $$f.xmllint $$f && rm -f $$f.xmllint && notPretty=1; \

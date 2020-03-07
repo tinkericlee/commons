@@ -77,18 +77,22 @@ public abstract class MailBox {
     MailBoxNotifier(Map<String, MailConsumer> mailConsumers, Queue<MailMessage> mailMessages) {
       requireNonNull(mailConsumers, "mailConsumers");
       requireNonNull(mailMessages, "mailMessages");
+      this.mailConsumers = mailConsumers;
+      this.mailMessages = mailMessages;
     }
 
     @Override
     public void run() {
       while (true) {
         MailMessage mailMessage = mailMessages.poll();
-        MailConsumer consumer = mailConsumers.get(mailMessage.mailTye);
-        if (consumer != null) {
-          try {
-            consumer.receiveMessage(mailMessage);
-          } catch (Exception e) {
-            LOG.error("Consume message error!", e);
+        if (mailMessage != null) {
+          MailConsumer consumer = mailConsumers.get(mailMessage.mailTye);
+          if (consumer != null) {
+            try {
+              consumer.receiveMessage(mailMessage);
+            } catch (Exception e) {
+              LOG.error("Consume message error!", e);
+            }
           }
         }
       }

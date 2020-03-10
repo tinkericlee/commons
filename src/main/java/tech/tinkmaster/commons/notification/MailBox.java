@@ -91,12 +91,12 @@ public abstract class MailBox {
             } catch (Exception e) {
               LOG.error("Consume message error!", e);
             }
-          } else {
-            try {
-              Thread.sleep(2_000);
-            } catch (InterruptedException e) {
-              // ignore, sleep silently
-            }
+          }
+        } else {
+          try {
+            Thread.sleep(2_000);
+          } catch (InterruptedException e) {
+            // ignore, sleep silently
           }
         }
       }
